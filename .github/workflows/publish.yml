@@ -22,4 +22,4 @@ jobs:
           registry-url: https://registry.npmjs.org/
           scope: '@lejeanf'
       - name: 🚀 publish
-        run: npm publish --access public
+        run: npm publish --access public --provenance
