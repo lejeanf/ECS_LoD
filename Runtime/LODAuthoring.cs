@@ -28,7 +28,7 @@ namespace CustomLOD
         [HideInInspector]
         public Unity.Entities.Entity Entity;
 
-        class Baker : Baker<LODAuthoring>
+        class Baker : Unity.Entities.Baker<LODAuthoring>
         {
             public override void Bake(LODAuthoring authoring)
             {

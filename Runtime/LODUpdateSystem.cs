@@ -50,6 +50,7 @@ namespace CustomLOD
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            state.RequireForUpdate<BeginPresentationEntityCommandBufferSystem.Singleton>();
             state.RequireForUpdate<LODGroupComponent>();
             state.RequireForUpdate<MainCameraPosition>();
         }

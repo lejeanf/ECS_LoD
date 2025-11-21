@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace CustomLOD
 {
-    public class LODGroupBaker : Baker<LODGroup>
+    public class LODGroupBaker : Unity.Entities.Baker<LODGroup>
     {
         public override void Bake(LODGroup authoring)
         {
