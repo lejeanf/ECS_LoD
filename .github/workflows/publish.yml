@@ -1,23 +1,25 @@
 name: "🚀 publish"
 
 on:
-    push:
-        branches:
-          - main
+# ... (rest of your trigger block)
 
 jobs:
-    release:
-        name: 🚀 publish
-        runs-on: ubuntu-latest
-        steps:
-            - name: 📚 checkout
-              uses: actions/checkout@v3
-            - name: 🟢 node
-              uses: actions/setup-node@v3
-              with:
-                  node-version: 16
-                  registry-url: https://registry.npmjs.org
-            - name: 🚀 publish
-              run: npm publish --access public
-              env:
-                  NODE_AUTH_TOKEN: ${{secrets.NPM_AUTH_TOKEN}}
+    release:
+        name: 🚀 publish
+        runs-on: ubuntu-latest
+        # 1. ADD: Permissions block for OIDC
+        permissions:
+            contents: read
+            id-token: write # This is essential for OIDC/Trusted Publishers
+        steps:
+            - name: 📚 checkout
+              uses: actions/checkout@v3
+            - name: 🟢 node
+              uses: actions/setup-node@v3
+              with:
+                  node-version: 16
+                  registry-url: https://registry.npmjs.org
+                  # 2. ADD: Tells setup-node to use the OIDC token
+                  scope: '@lejeanf' # Set your scope (usually your npm username)
+            - name: 🚀 publish
+              run: npm publish --access public # This will now be authenticated
