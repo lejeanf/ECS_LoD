@@ -1,11 +1,7 @@
 using Unity.Entities;
-using Unity.Mathematics;
 
 namespace CustomLOD
 {
-    /// <summary>
-    /// Main LOD component - attached to the root entity with LOD group
-    /// </summary>
     public struct LODGroupComponent : IComponentData
     {
         public float ObjectSize;           // Size of the object (from LODGroup)
@@ -18,35 +14,39 @@ namespace CustomLOD
         public int CurrentLOD;             // Currently active LOD level (-1 = culled)
     }
 
-    /// <summary>
-    /// Stores the screen height percentages for each LOD transition
-    /// </summary>
     public struct LODTransitions : IComponentData
     {
-        public float LOD0MaxDistance;      // Max distance for LOD 0 (based on screen height %)
-        public float LOD1MaxDistance;      // Max distance for LOD 1
-        public float LOD2MaxDistance;      // Max distance for LOD 2
-        public float LOD3MaxDistance;      // Max distance for LOD 3
-        public float LOD4MaxDistance;      // Max distance for LOD 4
-        public float CullDistance;         // Distance beyond which object is culled
+        public float LOD0MaxDistance;
+        public float LOD1MaxDistance;
+        public float LOD2MaxDistance;
+        public float LOD3MaxDistance;
+        public float LOD4MaxDistance;
+        public float CullDistance; 
     }
 
     /// <summary>
-    /// Tag component for LOD child entities
+    /// Tag component for LOD child entities. Currently unused but kept for future extensibility.
+    ///
+    /// NOTE: Due to Unity ECS baking ownership rules, this component cannot be added during baking
+    /// from the LODGroupBaker (parent baker cannot modify child entities from other GameObjects).
+    ///
+    /// To use this component in the future:
+    /// 1. Create a separate LODChildAuthoring MonoBehaviour component
+    /// 2. Add that component to child LOD renderer GameObjects
+    /// 3. Create a baker for LODChildAuthoring that adds this LODChildTag to its own entity
+    ///
+    /// This follows Unity's "Baker Principles" where each GameObject's baker only modifies its own entity.
     /// </summary>
     public struct LODChildTag : IComponentData
     {
-        public int LODLevel;               // Which LOD level this entity represents
-        public Entity ParentLODGroup;      // Reference back to the parent LOD group
+        public int LODLevel;
+        public Entity ParentLODGroup;
     }
 
-    /// <summary>
-    /// Buffer element to store multiple LOD level info (alternative approach)
-    /// </summary>
     public struct LODLevelInfo : IBufferElementData
     {
-        public Entity LODEntity;           // Entity for this LOD level
-        public float MaxDistance;          // Max distance for this LOD
-        public float ScreenHeightPercent;  // Original screen height percentage
+        public Entity LODEntity;
+        public float MaxDistance;
+        public float ScreenHeightPercent;
     }
 }

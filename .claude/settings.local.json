@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "SlashCommand(/run-prompt 002)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

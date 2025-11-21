@@ -1,5 +1,4 @@
 using Unity.Entities;
-using Unity.Mathematics;
 using UnityEngine;
 
 namespace CustomLOD
@@ -10,12 +9,10 @@ namespace CustomLOD
         {
             var entity = GetEntity(TransformUsageFlags.Dynamic);
             
-            // Get LOD information from the LODGroup
             var lods = authoring.GetLODs();
             if (lods.Length == 0)
                 return;
 
-            // Add main LOD component
             var lodComponent = new LODGroupComponent
             {
                 ObjectSize = authoring.size,
@@ -28,23 +25,17 @@ namespace CustomLOD
                 LOD4Entity = Entity.Null
             };
 
-            // Add transitions component
             var transitions = new LODTransitions();
 
-            // Create a dynamic buffer for LOD level info (more flexible approach)
             var lodBuffer = AddBuffer<LODLevelInfo>(entity);
 
-            // Process each LOD level
             for (int i = 0; i < lods.Length && i < 5; i++)
             {
                 var lod = lods[i];
                 
-                // Calculate max distance based on screen height percentage
-                // This is a rough approximation - adjust FOV and multiplier as needed
                 float screenHeightPercent = lod.screenRelativeTransitionHeight;
                 float maxDistance = CalculateMaxDistance(authoring.size, screenHeightPercent);
 
-                // Store in transitions component
                 switch (i)
                 {
                     case 0:
@@ -64,17 +55,19 @@ namespace CustomLOD
                         break;
                 }
 
-                // Process renderers in this LOD level
                 if (lod.renderers != null && lod.renderers.Length > 0)
                 {
-                    // Find the first renderer's GameObject
                     var lodGameObject = lod.renderers[0]?.gameObject;
                     if (lodGameObject != null)
                     {
-                        // Get entity for this LOD's GameObject
+                        // CRITICAL FIX: Explicitly declare dependency on the child GameObject before calling GetEntity()
+                        // This ensures Unity's baking system knows this child is part of our baking scope
+                        // Without this, moving prefabs in SubScenes causes "Entity doesn't belong to current authoring component" errors
+                        // because the child GameObjects may not be in scope when the parent LODGroup is rebaked
+                        DependsOn(lodGameObject.transform);
+
                         var lodEntity = GetEntity(lodGameObject, TransformUsageFlags.Dynamic);
                         
-                        // Store reference in main component
                         switch (i)
                         {
                             case 0:
@@ -94,7 +87,6 @@ namespace CustomLOD
                                 break;
                         }
 
-                        // Add to buffer
                         lodBuffer.Add(new LODLevelInfo
                         {
                             LODEntity = lodEntity,
@@ -102,21 +94,27 @@ namespace CustomLOD
                             ScreenHeightPercent = screenHeightPercent
                         });
 
-                        // Add tag to LOD child entity
-                        AddComponent(lodEntity, new LODChildTag
-                        {
-                            LODLevel = i,
-                            ParentLODGroup = entity
-                        });
-
-                        // Initially disable all LODs except LOD 0
-                        if (i != 0)
-                        {
-                            AddComponent(lodEntity, new Disabled());
-                        }
+                        // ARCHITECTURAL NOTE: Unity ECS Baking Rules
+                        // =============================================
+                        // We do NOT add components to child entities here because that violates Unity's baking ownership rules.
+                        // Each GameObject's baker can ONLY modify its own entity, not entities from other GameObjects.
+                        //
+                        // Why this is important:
+                        // - Unity's baking system enforces strict ownership to ensure deterministic, reproducible baking
+                        // - When multiple bakers try to modify the same entity, results become unpredictable
+                        // - The error "Entity doesn't belong to the current authoring component" occurs when this rule is violated
+                        //
+                        // How LOD children are managed:
+                        // - We store entity REFERENCES to child LOD renderers in the parent's LODGroupComponent (legal)
+                        // - The LODInitializationSystem runs at runtime to disable LOD1-4 entities (proper approach)
+                        // - The LODUpdateSystem enables/disables entities based on camera distance
+                        // - LODChildTag component exists in LODComponents.cs but is not actually used by any system
+                        //
+                        // If child-specific data is needed in the future, create a separate child authoring component
+                        // with its own baker (see Unity ECS documentation on "Baker Principles").
                     }
                 }
-                // Set cull distance (last LOD's max distance)
+
                 transitions.CullDistance = i == 0 ? transitions.LOD0MaxDistance :
                     i == 1 ? transitions.LOD1MaxDistance :
                     i == 2 ? transitions.LOD2MaxDistance :
@@ -124,20 +122,18 @@ namespace CustomLOD
                     transitions.LOD4MaxDistance;
             }
 
-            // Add components to entity
             AddComponent(entity, lodComponent);
             AddComponent(entity, transitions);
         }
+
         private float CalculateMaxDistance(float objectSize, float screenHeightPercent)
         {
             if (screenHeightPercent <= 0.0001f)
-                return 10000f; // Very far
+                return 10000f; 
 
-            // Assuming 60 degree FOV (common default)
             float fov = 60f * Mathf.Deg2Rad;
             float tanHalfFOV = Mathf.Tan(fov / 2f);
             
-            // Calculate distance where object would occupy screenHeightPercent of screen
             float distance = (objectSize / (2f * tanHalfFOV)) / screenHeightPercent;
             
             return distance;

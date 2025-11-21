@@ -10,15 +10,18 @@ namespace CustomLOD
     /// <summary>
     /// Alternative system using DynamicBuffer for more flexible LOD management
     /// Better for objects with varying numbers of LOD levels
+    /// NOTE: Make sure CameraPositionUpdateSystem is included for this to work
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateAfter(typeof(CameraPositionUpdateSystem))]
     public partial struct LODUpdateSystemBuffered : ISystem
     {
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<LODGroupComponent>();
+            state.RequireForUpdate<MainCameraPosition>();
             // Disable this system by default - enable only if you want to use buffer-based approach
             state.Enabled = false;
         }
@@ -26,7 +29,8 @@ namespace CustomLOD
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var cameraPosition = GetCameraPosition();
+            // Get camera position from singleton
+            var cameraPosition = SystemAPI.GetSingleton<MainCameraPosition>().Position;
 
             var ecbSingleton = SystemAPI.GetSingleton<BeginPresentationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
@@ -89,16 +93,6 @@ namespace CustomLOD
                     lodGroup.ValueRW.CurrentLOD = newLODLevel;
                 }
             }
-        }
-
-        private float3 GetCameraPosition()
-        {
-            var camera = Camera.main;
-            if (camera != null)
-            {
-                return camera.transform.position;
-            }
-            return float3.zero;
         }
     }
 

@@ -1,5 +1,4 @@
 using Unity.Burst;
-using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -8,25 +7,59 @@ using UnityEngine;
 namespace CustomLOD
 {
     /// <summary>
-    /// System that updates LOD levels based on distance from camera
+    /// Singleton component to store camera position for LOD calculations
+    /// </summary>
+    public struct MainCameraPosition : IComponentData
+    {
+        public float3 Position;
+    }
+
+    /// <summary>
+    /// System to update the main camera position (runs before LOD system)
+    /// This system is NOT Burst-compiled because it needs to access Camera.main
+    /// </summary>
+    [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateBefore(typeof(LODUpdateSystem))]
+    public partial class CameraPositionUpdateSystem : SystemBase
+    {
+        protected override void OnCreate()
+        {
+            // Create singleton entity for camera position
+            var entity = EntityManager.CreateEntity();
+            EntityManager.AddComponentData(entity, new MainCameraPosition { Position = float3.zero });
+        }
+
+        protected override void OnUpdate()
+        {
+            var camera = Camera.main;
+            if (camera != null)
+            {
+                SystemAPI.SetSingleton(new MainCameraPosition { Position = camera.transform.position });
+            }
+        }
+    }
+
+    /// <summary>
+    /// Main LOD update system - now fully Burst-compatible
     /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(PresentationSystemGroup))]
+    [UpdateAfter(typeof(CameraPositionUpdateSystem))]
     public partial struct LODUpdateSystem : ISystem
     {
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<LODGroupComponent>();
+            state.RequireForUpdate<MainCameraPosition>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            // Get camera position (main camera)
-            var cameraPosition = GetCameraPosition();
+            // Get camera position from singleton
+            var cameraPosition = SystemAPI.GetSingleton<MainCameraPosition>().Position;
 
-            // Job to update LOD levels
             var updateJob = new UpdateLODJob
             {
                 CameraPosition = cameraPosition,
@@ -35,17 +68,6 @@ namespace CustomLOD
             };
 
             state.Dependency = updateJob.ScheduleParallel(state.Dependency);
-        }
-
-        private float3 GetCameraPosition()
-        {
-            // Try to get main camera position
-            var camera = Camera.main;
-            if (camera != null)
-            {
-                return camera.transform.position;
-            }
-            return float3.zero;
         }
     }
 
@@ -63,17 +85,13 @@ namespace CustomLOD
             in LocalToWorld localToWorld,
             in LODTransitions transitions)
         {
-            // Calculate distance from camera to object
             float3 objectPosition = localToWorld.Position;
             float distance = math.distance(CameraPosition, objectPosition);
 
-            // Determine which LOD level should be active
             int newLODLevel = DetermineLODLevel(distance, transitions, lodGroup.LODCount);
 
-            // If LOD level changed, update active entities
             if (newLODLevel != lodGroup.CurrentLOD)
             {
-                // Disable current LOD (if any)
                 if (lodGroup.CurrentLOD >= 0)
                 {
                     Entity currentEntity = GetLODEntity(lodGroup, lodGroup.CurrentLOD);
@@ -83,7 +101,6 @@ namespace CustomLOD
                     }
                 }
 
-                // Enable new LOD (if not culled)
                 if (newLODLevel >= 0)
                 {
                     Entity newEntity = GetLODEntity(lodGroup, newLODLevel);
@@ -93,7 +110,6 @@ namespace CustomLOD
                     }
                 }
 
-                // Update current LOD
                 lodGroup.CurrentLOD = newLODLevel;
             }
         }
@@ -101,11 +117,9 @@ namespace CustomLOD
         [BurstCompile]
         private int DetermineLODLevel(float distance, in LODTransitions transitions, int lodCount)
         {
-            // Check if beyond cull distance
             if (distance > transitions.CullDistance)
-                return -1; // Culled
+                return -1; 
 
-            // Check each LOD level
             if (lodCount > 0 && distance <= transitions.LOD0MaxDistance)
                 return 0;
             if (lodCount > 1 && distance <= transitions.LOD1MaxDistance)
@@ -117,7 +131,6 @@ namespace CustomLOD
             if (lodCount > 4 && distance <= transitions.LOD4MaxDistance)
                 return 4;
 
-            // Beyond all LOD levels but not culled yet
             return lodCount - 1;
         }
 
