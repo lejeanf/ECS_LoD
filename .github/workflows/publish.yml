@@ -20,6 +20,5 @@ jobs:
         with:
           node-version: 16
           registry-url: https://registry.npmjs.org/
-          scope: '@jeanf'
       - name: 🚀 publish
         run: npm publish --access public --provenance
