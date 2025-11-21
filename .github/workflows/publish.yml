@@ -1,13 +1,14 @@
 name: "🚀 publish"
 
 on:
-# ... (rest of your trigger block)
+    push:
+        branches:
+          - main
 
 jobs:
     release:
         name: 🚀 publish
         runs-on: ubuntu-latest
-        # 1. ADD: Permissions block for OIDC
         permissions:
             contents: read
             id-token: write # This is essential for OIDC/Trusted Publishers
