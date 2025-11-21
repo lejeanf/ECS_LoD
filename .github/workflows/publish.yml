@@ -11,7 +11,7 @@ jobs:
         runs-on: ubuntu-latest
         permissions:
             contents: read
-            id-token: write # This is essential for OIDC/Trusted Publishers
+            id-token: write 
         steps:
             - name: 📚 checkout
               uses: actions/checkout@v3
@@ -20,7 +20,6 @@ jobs:
               with:
                   node-version: 16
                   registry-url: https://registry.npmjs.org
-                  # 2. ADD: Tells setup-node to use the OIDC token
-                  scope: '@lejeanf' # Set your scope (usually your npm username)
+                  scope: '@lejeanf'
             - name: 🚀 publish
-              run: npm publish --access public # This will now be authenticated
+              run: npm publish --access public 
