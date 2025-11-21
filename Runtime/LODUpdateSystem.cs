@@ -32,10 +32,13 @@ namespace CustomLOD
         protected override void OnUpdate()
         {
             var camera = Camera.main;
-            if (camera != null)
+            if (camera == null)
             {
-                SystemAPI.SetSingleton(new MainCameraPosition { Position = camera.transform.position });
+                UnityEngine.Debug.LogWarning("[CameraPositionUpdateSystem] Camera.main is NULL!");
+                return;
             }
+
+            SystemAPI.SetSingleton(new MainCameraPosition { Position = camera.transform.position });
         }
     }
 
