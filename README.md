@@ -56,4 +56,4 @@ To visualize LOD distances and see the current LOD level:
 
 ## License
 
-Free to use and modify for your projects.
+<img src="https://licensebuttons.net/l/by-nc-sa/3.0/88x31.png"></img>
