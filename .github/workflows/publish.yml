@@ -3,23 +3,23 @@ name: "🚀 publish"
 on:
     push:
         branches:
-          - main
+            - main
 
 jobs:
-    release:
-        name: 🚀 publish
-        runs-on: ubuntu-latest
-        permissions:
-            contents: read
-            id-token: write 
-        steps:
-            - name: 📚 checkout
-              uses: actions/checkout@v3
-            - name: 🟢 node
-              uses: actions/setup-node@v3
-              with:
-                  node-version: 16
-                  registry-url: https://registry.npmjs.org
-                  scope: '@lejeanf'
-            - name: 🚀 publish
-              run: npm publish --access public 
+  release:
+    name: 🚀 publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: 📚 checkout
+        uses: actions/checkout@v3
+      - name: 🟢 node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          registry-url: https://registry.npmjs.org
+          scope: '@lejeanf'
+      - name: 🚀 publish
+        run: npm publish --access public
