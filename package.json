@@ -1,7 +1,7 @@
 {
   "name": "fr.jeanf.ecslod",
   "version": "0.0.7",
-  "displayName": "ECS Level Of Detail System",
+  "displayName": "ECS - Level Of Detail System",
   "description": "Lod System for ECS",
   "keywords": [
     "jeanf",
