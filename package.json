@@ -1,5 +1,5 @@
 {
-  "name": "@jeanf/ecslod",
+  "name": "fr.jeanf.ecslod",
   "version": "0.0.1",
   "displayName": "ECS Level Of Detail System",
   "description": "Lod System for ECS",
