@@ -24,19 +24,11 @@ namespace CustomLOD
         [Tooltip("Show current LOD level text in Scene view")]
         public bool ShowDebugText = true;
 
-        // Internal reference to the entity (set during baking)
-        [HideInInspector]
-        public Unity.Entities.Entity Entity;
-
         class Baker : Unity.Entities.Baker<LODAuthoring>
         {
             public override void Bake(LODAuthoring authoring)
             {
                 var entity = GetEntity(TransformUsageFlags.Dynamic);
-
-                // Store the entity reference back to the authoring component
-                // This allows runtime systems to sync values
-                authoring.Entity = entity;
 
                 AddComponent(entity, new LODDebugInfo
                 {
