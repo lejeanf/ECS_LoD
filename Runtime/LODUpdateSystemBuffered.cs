@@ -22,20 +22,17 @@ namespace CustomLOD
         {
             state.RequireForUpdate<LODGroupComponent>();
             state.RequireForUpdate<MainCameraPosition>();
-            // Disable this system by default - enable only if you want to use buffer-based approach
             state.Enabled = false;
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            // Get camera position from singleton
             var cameraPosition = SystemAPI.GetSingleton<MainCameraPosition>().Position;
 
             var ecbSingleton = SystemAPI.GetSingleton<BeginPresentationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
 
-            // Process each LOD group
             foreach (var (lodGroup, lodBuffer, localToWorld, entity) 
                 in SystemAPI.Query<RefRW<LODGroupComponent>, DynamicBuffer<LODLevelInfo>, RefRO<LocalToWorld>>()
                     .WithEntityAccess())
@@ -43,63 +40,49 @@ namespace CustomLOD
                 if (lodBuffer.Length == 0)
                     continue;
 
-                float distance = math.distance(cameraPosition, localToWorld.ValueRO.Position);
+                var distance = math.distance(cameraPosition, localToWorld.ValueRO.Position);
                 
-                // Find appropriate LOD level
-                int newLODLevel = -1;
-                for (int i = 0; i < lodBuffer.Length; i++)
+                var newLODLevel = -1;
+                for (var i = 0; i < lodBuffer.Length; i++)
                 {
-                    if (distance <= lodBuffer[i].MaxDistance)
-                    {
-                        newLODLevel = i;
-                        break;
-                    }
+                    if (!(distance <= lodBuffer[i].MaxDistance)) continue;
+                    newLODLevel = i;
+                    break;
                 }
 
-                // If no LOD level found, use the last one or cull
                 if (newLODLevel == -1 && lodBuffer.Length > 0)
                 {
-                    // Check if we should cull or use last LOD
-                    float lastLODDistance = lodBuffer[lodBuffer.Length - 1].MaxDistance;
+                    var lastLODDistance = lodBuffer[lodBuffer.Length - 1].MaxDistance;
                     if (distance <= lastLODDistance * 1.5f) // Grace distance
                     {
                         newLODLevel = lodBuffer.Length - 1;
                     }
                 }
 
-                // Update if changed
-                if (newLODLevel != lodGroup.ValueRO.CurrentLOD)
+                if (newLODLevel == lodGroup.ValueRO.CurrentLOD) continue;
+                if (lodGroup.ValueRO.CurrentLOD >= 0 && lodGroup.ValueRO.CurrentLOD < lodBuffer.Length)
                 {
-                    // Disable old LOD
-                    if (lodGroup.ValueRO.CurrentLOD >= 0 && lodGroup.ValueRO.CurrentLOD < lodBuffer.Length)
+                    var oldEntity = lodBuffer[lodGroup.ValueRO.CurrentLOD].LODEntity;
+                    if (oldEntity != Entity.Null)
                     {
-                        var oldEntity = lodBuffer[lodGroup.ValueRO.CurrentLOD].LODEntity;
-                        if (oldEntity != Entity.Null)
-                        {
-                            ecb.AddComponent<Disabled>(oldEntity);
-                        }
+                        ecb.AddComponent<Disabled>(oldEntity);
                     }
-
-                    // Enable new LOD
-                    if (newLODLevel >= 0 && newLODLevel < lodBuffer.Length)
-                    {
-                        var newEntity = lodBuffer[newLODLevel].LODEntity;
-                        if (newEntity != Entity.Null)
-                        {
-                            ecb.RemoveComponent<Disabled>(newEntity);
-                        }
-                    }
-
-                    lodGroup.ValueRW.CurrentLOD = newLODLevel;
                 }
+
+                if (newLODLevel >= 0 && newLODLevel < lodBuffer.Length)
+                {
+                    var newEntity = lodBuffer[newLODLevel].LODEntity;
+                    if (newEntity != Entity.Null)
+                    {
+                        ecb.RemoveComponent<Disabled>(newEntity);
+                    }
+                }
+
+                lodGroup.ValueRW.CurrentLOD = newLODLevel;
             }
         }
     }
 
-    /// <summary>
-    /// System to handle LOD fade mode (cross-fade between LODs)
-    /// More advanced feature - implement if needed
-    /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(PresentationSystemGroup))]
     [UpdateAfter(typeof(LODUpdateSystem))]
@@ -108,7 +91,6 @@ namespace CustomLOD
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            // Disabled by default - enable if you want cross-fade support
             state.Enabled = false;
         }
 

@@ -60,10 +60,6 @@ namespace CustomLOD
                     var lodGameObject = lod.renderers[0]?.gameObject;
                     if (lodGameObject != null)
                     {
-                        // CRITICAL FIX: Explicitly declare dependency on the child GameObject before calling GetEntity()
-                        // This ensures Unity's baking system knows this child is part of our baking scope
-                        // Without this, moving prefabs in SubScenes causes "Entity doesn't belong to current authoring component" errors
-                        // because the child GameObjects may not be in scope when the parent LODGroup is rebaked
                         DependsOn(lodGameObject.transform);
 
                         var lodEntity = GetEntity(lodGameObject, TransformUsageFlags.Dynamic);
@@ -93,25 +89,6 @@ namespace CustomLOD
                             MaxDistance = maxDistance,
                             ScreenHeightPercent = screenHeightPercent
                         });
-
-                        // ARCHITECTURAL NOTE: Unity ECS Baking Rules
-                        // =============================================
-                        // We do NOT add components to child entities here because that violates Unity's baking ownership rules.
-                        // Each GameObject's baker can ONLY modify its own entity, not entities from other GameObjects.
-                        //
-                        // Why this is important:
-                        // - Unity's baking system enforces strict ownership to ensure deterministic, reproducible baking
-                        // - When multiple bakers try to modify the same entity, results become unpredictable
-                        // - The error "Entity doesn't belong to the current authoring component" occurs when this rule is violated
-                        //
-                        // How LOD children are managed:
-                        // - We store entity REFERENCES to child LOD renderers in the parent's LODGroupComponent (legal)
-                        // - The LODInitializationSystem runs at runtime to disable LOD1-4 entities (proper approach)
-                        // - The LODUpdateSystem enables/disables entities based on camera distance
-                        // - LODChildTag component exists in LODComponents.cs but is not actually used by any system
-                        //
-                        // If child-specific data is needed in the future, create a separate child authoring component
-                        // with its own baker (see Unity ECS documentation on "Baker Principles").
                     }
                 }
 
